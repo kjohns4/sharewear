@@ -7,7 +7,7 @@ A web app where friends coordinate outfits for events. Users create events, shar
 - Tailwind CSS v4 (@tailwindcss/vite plugin)
 - shadcn/ui-style primitives (Radix + CVA, no shadcn CLI)
 - Supabase (Postgres, Auth, RLS)
-- Vercel (auto-deploy on push)
+- Vercel (auto-deploy on push from GitHub: kjohns4/sharewear)
 
 ## Folder Structure
 ```
@@ -41,7 +41,7 @@ src/
 | display_name | text | set on first login |
 | created_at | timestamptz | default now() |
 
-RLS: users can read all profiles, update only their own.
+RLS: anyone (anon + authenticated) can read. Users can insert/update only their own row.
 
 ### events
 | column | type | notes |
@@ -53,7 +53,7 @@ RLS: users can read all profiles, update only their own.
 | invite_code | text | unique, random 8-char string |
 | created_at | timestamptz | default now() |
 
-RLS: anyone authenticated can read events (by invite_code lookup). Only creator can update/delete.
+RLS: anyone (anon + authenticated) can read. Only creator can insert/update/delete.
 
 ### outfit_posts
 | column | type | notes |
@@ -64,7 +64,7 @@ RLS: anyone authenticated can read events (by invite_code lookup). Only creator 
 | description | text | |
 | created_at | timestamptz | default now() |
 
-RLS: authenticated users can read all posts for an event. Users can only insert/update/delete their own posts.
+RLS: anyone (anon + authenticated) can read. Users can only insert/update/delete their own posts.
 
 ## Completed Tasks
 - [x] Vite + React + TypeScript scaffold
@@ -79,16 +79,17 @@ RLS: authenticated users can read all posts for an event. Users can only insert/
 - [x] EventCard and OutfitPost display components
 - [x] Copy-invite-link button on Event page
 - [x] Auth guard routing in App.tsx (login → display_name → home)
-- [x] TypeScript clean (tsc --noEmit passes)
-- [x] Production build passes
+- [x] Supabase migration run (profiles, events, outfit_posts + RLS + trigger)
+- [x] Role grants applied (anon + authenticated can reach tables)
+- [x] Anon read policies added (events + outfit_posts + profiles readable without login)
+- [x] GitHub repo created (private: kjohns4/sharewear)
+- [x] Vercel connected to GitHub, env vars set, auto-deploy working
+- [x] Supabase Site URL + redirect URLs configured for production
+- [x] Display name save navigates immediately (onSaved callback fix)
+- [x] Auth works end to end in production (magic link → display name → home)
 
-## Remaining: Engineer Action Required
-- [ ] **Supabase: run SQL migration** (see supabase/migrations/001_initial.sql)
-- [ ] **Supabase: enable Email auth with Magic Link** in Authentication > Providers
-- [ ] **Set redirect URL** in Supabase Authentication > URL Configuration: add `http://localhost:5173`
-- [ ] **Create .env.local** with VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
-- [ ] **Vercel: set same env vars** in project settings for production
-- [ ] Connect Vercel to GitHub repo and enable auto-deploy
+## Open Issues
+- [ ] **Vercel deep link 404**: `/event/:code` returns 404 in production. `vercel.json` with both `rewrites` and `routes` formats attempted — neither worked. Root cause is likely a Root Directory or Output Directory override in the Vercel project settings (Settings → General) conflicting with the SPA fallback config. Works fine locally.
 
 ## V2 Backlog
 - Outfit photos / image upload
@@ -97,34 +98,37 @@ RLS: authenticated users can read all posts for an event. Users can only insert/
 - Friend system / private events
 - Push or email notifications when someone posts
 - Real-time feed updates (Supabase realtime channel)
-- Event page visible to unauthenticated users without sign-in banner blocking the view
 
 ## Known Gotchas
-- invite_code is generated client-side (nanoid-style 8-char string). Collision risk is negligible for MVP scale but switch to a Supabase function or DB default for scale.
-- Magic link auth requires a confirmed email — test with a real email in dev. Supabase blocks magic links to unverified addresses.
-- Supabase RLS must be enabled on all tables before going live; do not skip.
-- `database.types.ts` is hand-maintained. After any schema change, update it to match. Consider generating it from Supabase CLI (`supabase gen types typescript`) in the future.
-- Tailwind v4 uses `@import "tailwindcss"` not `@tailwind base/components/utilities` — do not use v3 syntax.
-- TypeScript's `baseUrl` is deprecated in TS 7.0; suppressed with `"ignoreDeprecations": "6.0"` in tsconfig.app.json.
-- The Supabase join `.select('*, profiles(display_name)')` on outfit_posts requires the FK `outfit_posts_user_id_fkey` to exist in the DB. The migration creates it.
+- **Vercel SPA routing**: `vercel.json` `rewrites` format conflicts with Vite framework preset. `routes` format also tried. Check Vercel project Settings → General for Root/Output Directory overrides before trying other fixes.
+- **Supabase RLS needs GRANTs too**: Policies alone aren't enough in newer Supabase projects — public schema default grants are revoked. Must explicitly `GRANT SELECT/INSERT/UPDATE/DELETE ON table TO authenticated` and `GRANT SELECT ON table TO anon` for public reads.
+- **Anon vs authenticated RLS**: Any table that should be readable without login needs both an `anon` policy AND a `GRANT SELECT ... TO anon`. Easy to miss.
+- **Profile state doesn't auto-refresh**: `user` object from Supabase auth doesn't change when profile data changes. Any component that updates profile data must call its parent's state setter directly (not rely on a useEffect watching `user`).
+- invite_code is generated client-side (8-char alphanumeric). Fine for MVP; switch to a DB default for scale.
+- Magic link requires a real email address. Supabase blocks magic links to unverified addresses.
+- `database.types.ts` is hand-maintained. After schema changes, update it or regenerate with `supabase gen types typescript`.
+- Tailwind v4 uses `@import "tailwindcss"` — do not use v3 `@tailwind base/components/utilities` syntax.
+- TypeScript `baseUrl` deprecated in TS 7.0; suppressed with `"ignoreDeprecations": "6.0"` in tsconfig.app.json.
+- The Supabase join `.select('*, profiles(display_name)')` on outfit_posts requires `outfit_posts_user_id_fkey` FK to exist. Created by the migration via the inline `references` clause in `create table`.
 
 ## Deploy
-- Target: Vercel
-- Env vars needed:
+- Target: Vercel (auto-deploys on push to main)
+- GitHub: https://github.com/kjohns4/sharewear
+- Env vars needed in both .env.local and Vercel project settings:
   - VITE_SUPABASE_URL
   - VITE_SUPABASE_PUBLISHABLE_KEY
 
 ## Security
-- Secrets in .env.local only, never hardcoded. `.env.local` covered by `*.local` in .gitignore.
-- RLS enabled on all tables (see migration)
+- Secrets in .env.local only, never hardcoded. Covered by `*.local` in .gitignore.
+- RLS enabled on all tables with explicit policies
+- Role grants applied for anon and authenticated
 - Input validated client-side before all Supabase writes (length bounds checked)
-- Auth enforced in RLS policies, not only in UI
+- Auth enforced in RLS, not only in UI
 - No `any` types in TypeScript
-- npm audit: 0 vulnerabilities (checked after each install)
+- npm audit: 0 vulnerabilities
 
 ## Commit Conventions
 Conventional Commits: `<type>(scope): <description>`
 Types: feat, fix, refactor, chore, style, test, docs
 One concern per commit — atomic, self-contained, reviewable in isolation.
 Push after every 2-3 commits so the PR stays current.
-Open a PR for each logical feature unit — do not batch the entire session into one PR.
