@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-export default function SetDisplayName() {
+type Props = { onSaved: (name: string) => void }
+
+export default function SetDisplayName({ onSaved }: Props) {
   const { user } = useAuth()
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
@@ -27,8 +29,9 @@ export default function SetDisplayName() {
     setLoading(false)
     if (upsertError) {
       setError(upsertError.message)
+      return
     }
-    // On success the parent router re-renders because profile is now set
+    onSaved(trimmed)
   }
 
   return (

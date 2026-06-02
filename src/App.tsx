@@ -51,7 +51,7 @@ function AppRoutes() {
           !user ? (
             <Navigate to="/login" replace />
           ) : !profile?.display_name ? (
-            <SetDisplayName />
+            <SetDisplayName onSaved={(name) => setProfile((p) => p ? { ...p, display_name: name } : p)} />
           ) : (
             <Home />
           )

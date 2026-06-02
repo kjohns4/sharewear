@@ -71,16 +71,6 @@ create table if not exists public.outfit_posts (
   created_at  timestamptz not null default now()
 );
 
--- FK used by PostgREST join: outfit_posts.user_id → profiles.id
--- (PostgREST infers the join automatically from the FK name)
-alter table public.outfit_posts
-  add constraint outfit_posts_user_id_fkey
-  foreign key (user_id) references public.profiles(id)
-  on delete cascade
-  not valid;
-
-alter table public.outfit_posts validate constraint outfit_posts_user_id_fkey;
-
 alter table public.outfit_posts enable row level security;
 
 create policy "outfit_posts: authenticated users can read"
@@ -102,6 +92,15 @@ create policy "outfit_posts: owner can delete"
   on public.outfit_posts for delete
   to authenticated
   using (auth.uid() = user_id);
+
+-- ----------------------------------------------------------------
+-- Role grants (RLS policies alone are not enough without these)
+-- ----------------------------------------------------------------
+grant usage on schema public to anon, authenticated;
+
+grant select, insert, update on public.profiles to anon, authenticated;
+grant select, insert, update, delete on public.events to authenticated;
+grant select, insert, update, delete on public.outfit_posts to authenticated;
 
 -- ----------------------------------------------------------------
 -- Auto-create profile row on new user sign-up
