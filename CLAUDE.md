@@ -89,7 +89,7 @@ RLS: anyone (anon + authenticated) can read. Users can only insert/update/delete
 - [x] Auth works end to end in production (magic link → display name → home)
 
 ## Open Issues
-- [ ] **Vercel deep link 404**: `/event/:code` returns 404 in production. `vercel.json` with both `rewrites` and `routes` formats attempted — neither worked. Root cause is likely a Root Directory or Output Directory override in the Vercel project settings (Settings → General) conflicting with the SPA fallback config. Works fine locally.
+- [x] **Vercel deep link 404**: Fixed. Root cause was the Vite framework preset generating its own routing config at build time that overrode `vercel.json` rewrites. Fix: set `framework: null` + explicit `buildCommand`/`outputDirectory` in `vercel.json` so rewrites take full effect. Production URL is https://sharewear-omega.vercel.app.
 
 ## V2 Backlog
 - Outfit photos / image upload
@@ -126,6 +126,13 @@ RLS: anyone (anon + authenticated) can read. Users can only insert/update/delete
 - Auth enforced in RLS, not only in UI
 - No `any` types in TypeScript
 - npm audit: 0 vulnerabilities
+
+## PR Standards
+After every 2-3 commits, open a PR. This is not optional — it is part of done.
+- Run: `gh pr create --title "<description>" --body "<what changed, why, any risks>"`
+- Do not wait until end of session to open PRs
+- Each PR should cover one logical unit of work
+- If `gh` CLI is not installed, flag it immediately and stop — do not skip PRs
 
 ## Commit Conventions
 Conventional Commits: `<type>(scope): <description>`
