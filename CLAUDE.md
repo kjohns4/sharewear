@@ -62,6 +62,7 @@ RLS: anyone (anon + authenticated) can read. Only creator can insert/update/dele
 | event_id | uuid | FK → events.id |
 | user_id | uuid | FK → profiles.id |
 | description | text | |
+| image_url | text | nullable; public URL to outfit-images bucket |
 | created_at | timestamptz | default now() |
 
 RLS: anyone (anon + authenticated) can read. Users can only insert/update/delete their own posts.
@@ -87,12 +88,12 @@ RLS: anyone (anon + authenticated) can read. Users can only insert/update/delete
 - [x] Supabase Site URL + redirect URLs configured for production
 - [x] Display name save navigates immediately (onSaved callback fix)
 - [x] Auth works end to end in production (magic link → display name → home)
+- [x] Image upload on outfit posts (Supabase Storage, RLS scoped to uid/, lazy-loaded in feed)
 
 ## Open Issues
 - [x] **Vercel deep link 404**: Fixed. Root cause was the Vite framework preset generating its own routing config at build time that overrode `vercel.json` rewrites. Fix: set `framework: null` + explicit `buildCommand`/`outputDirectory` in `vercel.json` so rewrites take full effect. Production URL is https://sharewear-omega.vercel.app.
 
 ## V2 Backlog
-- Outfit photos / image upload
 - Likes / reactions on posts
 - Edit/delete your own post
 - Friend system / private events
@@ -110,6 +111,10 @@ RLS: anyone (anon + authenticated) can read. Users can only insert/update/delete
 - Tailwind v4 uses `@import "tailwindcss"` — do not use v3 `@tailwind base/components/utilities` syntax.
 - TypeScript `baseUrl` deprecated in TS 7.0; suppressed with `"ignoreDeprecations": "6.0"` in tsconfig.app.json.
 - The Supabase join `.select('*, profiles(display_name)')` on outfit_posts requires `outfit_posts_user_id_fkey` FK to exist. Created by the migration via the inline `references` clause in `create table`.
+- **Supabase redirect URLs must include localhost**: Without `http://localhost:5173/**` and `http://localhost:5174/**` in the allowed redirect list, magic link login fails in local dev.
+- **Supabase Site URL controls magic link destination**: If Site URL points to an old Vercel preview deployment, users land on stale code after signing in. Keep it set to the stable alias (`https://sharewear-omega.vercel.app`).
+- **Storage bucket RLS uses `storage.foldername(name)[1]`**: The first path segment must equal `auth.uid()::text`. Upload paths must be `{uid}/{filename}` — any other structure will be rejected by RLS.
+- **`object-cover` crops images**: Use `object-contain` + `bg-gray-50` on feed images so portrait/landscape photos aren't clipped.
 
 ## Deploy
 - Target: Vercel (auto-deploys on push to main)
