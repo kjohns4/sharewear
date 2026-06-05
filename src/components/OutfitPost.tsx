@@ -14,6 +14,14 @@ export default function OutfitPost({ post }: Props) {
         <span className="font-medium text-gray-900 text-sm">{displayName}</span>
         <span className="text-xs text-gray-400">{timeAgo}</span>
       </div>
+      {post.image_url && (
+        <img
+          src={post.image_url}
+          alt="outfit"
+          loading="lazy"
+          className="mb-3 w-full max-h-80 rounded-md object-cover"
+        />
+      )}
       <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap break-words">
         {post.description}
       </p>

@@ -54,6 +54,7 @@ export type Database = {
           event_id: string
           user_id: string
           description: string
+          image_url: string | null
           created_at: string
         }
         Insert: {
@@ -61,6 +62,7 @@ export type Database = {
           event_id: string
           user_id: string
           description: string
+          image_url?: string | null
           created_at?: string
         }
         Update: {
@@ -68,6 +70,7 @@ export type Database = {
           event_id?: string
           user_id?: string
           description?: string
+          image_url?: string | null
           created_at?: string
         }
         Relationships: [

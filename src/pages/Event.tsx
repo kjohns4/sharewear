@@ -21,6 +21,7 @@ export default function Event() {
   const [notFound, setNotFound] = useState(false)
 
   const [description, setDescription] = useState('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
   const [posting, setPosting] = useState(false)
   const [postError, setPostError] = useState<string | null>(null)
 
@@ -53,6 +54,23 @@ export default function Event() {
       })
   }, [inviteCode, fetchPosts])
 
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null
+    if (!file) { setImageFile(null); return }
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      setPostError('Only JPEG and PNG images are supported.')
+      e.target.value = ''
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setPostError('Image must be under 5 MB.')
+      e.target.value = ''
+      return
+    }
+    setPostError(null)
+    setImageFile(file)
+  }
+
   async function handlePost(e: React.FormEvent) {
     e.preventDefault()
     const trimmed = description.trim()
@@ -63,10 +81,28 @@ export default function Event() {
     if (!user || !event) return
     setPosting(true)
     setPostError(null)
+
+    let imageUrl: string | null = null
+    if (imageFile) {
+      const ext = imageFile.name.split('.').pop() ?? 'jpg'
+      const path = `${user.id}/${crypto.randomUUID()}.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from('outfit-images')
+        .upload(path, imageFile, { contentType: imageFile.type })
+      if (uploadError) {
+        setPosting(false)
+        setPostError(uploadError.message)
+        return
+      }
+      const { data: urlData } = supabase.storage.from('outfit-images').getPublicUrl(path)
+      imageUrl = urlData.publicUrl
+    }
+
     const { error } = await supabase.from('outfit_posts').insert({
       event_id: event.id,
       user_id: user.id,
       description: trimmed,
+      image_url: imageUrl,
     })
     setPosting(false)
     if (error) {
@@ -74,6 +110,7 @@ export default function Event() {
       return
     }
     setDescription('')
+    setImageFile(null)
     fetchPosts(event.id)
   }
 
@@ -164,6 +201,17 @@ export default function Event() {
                 maxLength={500}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
               />
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Photo <span className="text-gray-400 font-normal">(optional · JPEG or PNG · max 5 MB)</span>
+                </label>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  onChange={handleFileChange}
+                  className="block w-full text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-violet-50 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-violet-700 hover:file:bg-violet-100"
+                />
+              </div>
               {postError && <p className="text-sm text-red-600">{postError}</p>}
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-400">{description.length}/500</span>
