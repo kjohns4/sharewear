@@ -19,7 +19,7 @@ export default function OutfitPost({ post }: Props) {
           src={post.image_url}
           alt="outfit"
           loading="lazy"
-          className="mb-3 w-full max-h-80 rounded-md object-cover"
+          className="mb-3 w-full max-h-96 rounded-md object-contain bg-gray-50"
         />
       )}
       <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap break-words">
